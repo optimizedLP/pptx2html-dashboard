@@ -1,32 +1,23 @@
-from flask import Flask, render_template, request, send_from_directory, url_for
-from werkzeug.utils import secure_filename
+import streamlit as st
+import os
+import subprocess
+import base64
+import tempfile
 from pdf2image import convert_from_path
-import os, subprocess, base64
 from io import BytesIO
 
-app = Flask(__name__)
+st.set_page_config(page_title="PPTX → HTML Dashboard", layout="centered")
 
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "output"
+st.title("PPTX → HTML Dashboard")
+st.write("Upload a PPTX file and convert it into a standalone HTML dashboard.")
+
 ALLOWED_EXTENSIONS = {"pptx"}
 
-# Make sure folders exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["OUTPUT_FOLDER"] = OUTPUT_FOLDER
-
-# Allowed file extensions
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Convert PPTX to PDF using LibreOffice CLI
-def pptx_to_pdf(pptx_path):
-    pdf_filename = os.path.basename(pptx_path).replace(".pptx", ".pdf")
-    pdf_path = os.path.join(OUTPUT_FOLDER, pdf_filename)
-
-    # Make sure LibreOffice is installed: soffice CLI
+# Convert PPTX → PDF
+def pptx_to_pdf(pptx_path, output_dir):
     subprocess.run([
         "soffice",
         "--headless",
@@ -34,68 +25,68 @@ def pptx_to_pdf(pptx_path):
         "pdf",
         pptx_path,
         "--outdir",
-        OUTPUT_FOLDER
+        output_dir
     ], check=True)
 
-    return pdf_path
+    pdf_name = os.path.basename(pptx_path).replace(".pptx", ".pdf")
+    return os.path.join(output_dir, pdf_name)
 
-# Convert PDF to standalone HTML with embedded images
-def pdf_to_html(pdf_path):
-    # Convert PDF pages to images
-    pages = convert_from_path(pdf_path, dpi=150)  # Higher dpi = better quality
+# Convert PDF → standalone HTML
+def pdf_to_html(pdf_path, output_dir):
+    pages = convert_from_path(pdf_path, dpi=150)
 
-    # Start HTML content
-    html_content = "<!DOCTYPE html>\n<html>\n<head>\n"
-    html_content += "<title>PPTX Dashboard</title>\n"
-    html_content += f'<link rel="stylesheet" href="{ url_for("static", filename="styles.css") }">\n'
-    html_content += "</head>\n<body>\n"
+    html = """<!DOCTYPE html>
+<html>
+<head>
+<title>PPTX Dashboard</title>
+<style>
+body { font-family: Arial; background: #fafafa; }
+.slide-img { width: 100%; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+"""
 
-    # Embed each slide as Base64 image
     for page in pages:
-        img_bytes = BytesIO()
-        page.save(img_bytes, format="PNG")
-        encoded = base64.b64encode(img_bytes.getvalue()).decode()
-        html_content += f'<img src="data:image/png;base64,{encoded}" class="slide-img">\n'
+        buf = BytesIO()
+        page.save(buf, format="PNG")
+        encoded = base64.b64encode(buf.getvalue()).decode()
+        html += f'<img src="data:image/png;base64,{encoded}" class="slide-img"/>\n'
 
-    html_content += "</body>\n</html>"
+    html += "</body></html>"
 
-    # Save HTML
-    html_filename = os.path.basename(pdf_path).replace(".pdf", "_dashboard.html")
-    html_path = os.path.join(OUTPUT_FOLDER, html_filename)
+    html_path = os.path.join(output_dir, "dashboard.html")
     with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
+        f.write(html)
 
-    return html_filename
+    return html_path
 
-# Main page: upload PPTX
-@app.route("/", methods=["GET", "POST"])
-def index():
-    html_file = None
-    if request.method == "POST":
-        if "pptx_file" not in request.files:
-            return "No file part"
-        file = request.files["pptx_file"]
-        if file.filename == "":
-            return "No selected file"
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            file.save(save_path)
+# UI: File upload
+uploaded_file = st.file_uploader("Upload PPTX file", type=["pptx"])
 
-            # Convert PPTX → PDF
-            pdf_path = pptx_to_pdf(save_path)
+if uploaded_file:
+    if not allowed_file(uploaded_file.name):
+        st.error("Invalid file type")
+    else:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pptx_path = os.path.join(tmpdir, uploaded_file.name)
+            with open(pptx_path, "wb") as f:
+                f.write(uploaded_file.read())
 
-            # Convert PDF → standalone HTML
-            html_file = pdf_to_html(pdf_path)
+            st.success("File uploaded")
 
-    return render_template("index.html", html_file=html_file)
+            with st.spinner("Converting PPTX → PDF → HTML..."):
+                pdf_path = pptx_to_pdf(pptx_path, tmpdir)
+                html_path = pdf_to_html(pdf_path, tmpdir)
 
-# Serve generated HTML
-@app.route("/output/<filename>")
-def output(filename):
-    return send_from_directory(OUTPUT_FOLDER, filename)
+            st.success("Conversion complete!")
 
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+            with open(html_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+            st.download_button(
+                label="Download HTML Dashboard",
+                data=html_content,
+                file_name="dashboard.html",
+                mime="text/html"
+            )
