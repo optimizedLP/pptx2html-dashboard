@@ -19,7 +19,7 @@ def allowed_file(filename):
 # Convert PPTX → PDF
 def pptx_to_pdf(pptx_path, output_dir):
     subprocess.run([
-        "soffice",
+        "/usr/bin/soffice",
         "--headless",
         "--convert-to",
         "pdf",
