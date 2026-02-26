@@ -9,7 +9,7 @@ from io import BytesIO
 st.set_page_config(page_title="PPTX → HTML Dashboard", layout="centered")
 
 st.title("PPTX → HTML Dashboard")
-st.write("Upload a PPTX file and convert it into a standalone HTML dashboard.")
+st.write("Upload a PPTX file and convert it into a HTML dashboard.")
 
 ALLOWED_EXTENSIONS = {"pptx"}
 
