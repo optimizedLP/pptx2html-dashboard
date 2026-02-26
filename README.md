@@ -1,34 +1,31 @@
-# PPTX to HTML Dashboard
 
-Convert your PowerPoint (.pptx) slides into a visually appealing HTML dashboard. Upload a PPTX, preview slides in your browser, and download a standalone HTML file that works offline.
+[https://pptx2html-dashboard.streamlit.app/](https://pptx2html-dashboard.streamlit.app/)
 
-**Live Demo:** [https://pptx2html-dashboard.onrender.com](https://pptx2html-dashboard.onrender.com)
 
-## Features
+# PPTX → HTML Dashboard
 
-- Upload PPTX files in the browser
-- Preview slides as dashboard-style images
-- Download a self-contained HTML dashboard
-- No Python knowledge required
+A simple Streamlit web app that converts PowerPoint (.pptx) files into a standalone HTML dashboard.
 
-## How to Run Locally
+Upload a PPTX file and download a clean HTML version where each slide is rendered as an image inside a modern card-style layout.
 
-Clone the repo and enter the folder:  
-`git clone https://github.com/<yourusername>/pptx-to-html-dashboard.git`  
-`cd pptx-to-html-dashboard`
+---
 
-Create a virtual environment and install dependencies:  
-`python -m venv venv`  
-`source venv/bin/activate`  (Mac/Linux)  
-`venv\Scripts\activate`     (Windows)  
-`pip install -r requirements.txt`
+## 🚀 Live Demo
 
-Run the app:  
-`python app.py`
+[https://pptx2html-dashboard.streamlit.app/](https://pptx2html-dashboard.streamlit.app/)
 
-Open your browser at `http://127.0.0.1:5000` and upload a PPTX file.
+---
 
-## Notes
+## 🛠 How It Works
 
-- Uploaded PPTX files and generated dashboards are temporarily stored in `uploads/` and `output/`.  
-- Downloaded HTML files are fully self-contained and work offline.
+The conversion pipeline:
+
+PPTX → (LibreOffice headless) → PDF → (pdf2image + Poppler) → PNG → Embedded in HTML
+
+- LibreOffice converts PPTX to PDF
+- pdf2image converts each PDF page to an image
+- Images are embedded in a standalone HTML file using base64 encoding
+
+The final HTML file requires no external assets — it works anywhere.
+
+---
