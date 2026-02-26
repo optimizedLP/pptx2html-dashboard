@@ -1,7 +1,3 @@
-
-[https://pptx2html-dashboard.streamlit.app/](https://pptx2html-dashboard.streamlit.app/)
-
-
 # PPTX → HTML Dashboard
 
 A simple Streamlit web app that converts PowerPoint (.pptx) files into a standalone HTML dashboard.
